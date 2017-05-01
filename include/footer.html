@@ -233,13 +233,234 @@
 <div id="gotoTop" class="icon-angle-up"></div>
 
 <!-- External JavaScripts
-============================================= -->
+	============================================= -->
 <script type="text/javascript" src="js/jquery.js"></script>
 <script type="text/javascript" src="js/plugins.js"></script>
+
+
+<!-- Date & Time Picker JS -->
+<script type="text/javascript" src="js/components/moment.js"></script>
+<script type="text/javascript" src="demos/travel/js/datepicker.js"></script>
+<script type="text/javascript" src="js/components/timepicker.js"></script>
+
+<!-- Include Date Range Picker -->
+<script type="text/javascript" src="js/components/daterangepicker.js"></script>
+
+<!-- Bootstrap File Upload Plugin -->
+<script type="text/javascript" src="js/components/bs-filestyle.js"></script>
 
 <!-- Footer Scripts
 ============================================= -->
 <script type="text/javascript" src="js/functions.js"></script>
+
+<script type="text/javascript">
+    $(function() {
+        $('.travel-date-group .default').datepicker({
+            autoclose: true,
+            startDate: "today",
+        });
+
+        $('.travel-date-group .today').datepicker({
+            autoclose: true,
+            startDate: "today",
+            todayHighlight: true
+        });
+
+        $('.travel-date-group .past-enabled').datepicker({
+            autoclose: true,
+        });
+        $('.travel-date-group .format').datepicker({
+            autoclose: true,
+            format: "yyyy-mm-dd",
+        });
+
+        $('.travel-date-group .autoclose').datepicker();
+
+        $('.travel-date-group .disabled-week').datepicker({
+            autoclose: true,
+            daysOfWeekDisabled: "0"
+        });
+
+        $('.travel-date-group .highlighted-week').datepicker({
+            autoclose: true,
+            daysOfWeekHighlighted: "0"
+        });
+
+        $('.travel-date-group .mnth').datepicker({
+            autoclose: true,
+            minViewMode: 1,
+            format: "mm/yy"
+        });
+
+        $('.travel-date-group .multidate').datepicker({
+            multidate: true,
+            multidateSeparator: " , "
+        });
+
+        $('.travel-date-group .input-daterange').datepicker({
+            autoclose: true
+        });
+
+        $('.travel-date-group .inline-calendar').datepicker();
+
+        $('.datetimepicker').datetimepicker({
+            showClose: true
+        });
+
+        $('.datetimepicker1').datetimepicker({
+            format: 'LT',
+            showClose: true
+        });
+
+        $('.datetimepicker2').datetimepicker({
+            inline: true,
+            sideBySide: true
+        });
+
+    });
+
+    $(function() {
+        // .daterange1
+        $(".daterange1").daterangepicker({
+            "buttonClasses": "button button-rounded button-mini nomargin",
+            "applyClass": "button-color",
+            "cancelClass": "button-light"
+        });
+
+        // .daterange2
+        $(".daterange2").daterangepicker({
+            "opens": "center",
+            timePicker: true,
+            timePickerIncrement: 30,
+            locale: {
+                format: 'MM/DD/YYYY h:mm A'
+            },
+            "buttonClasses": "button button-rounded button-mini nomargin",
+            "applyClass": "button-color",
+            "cancelClass": "button-light"
+        });
+
+        // .daterange3
+        $(".daterange3").daterangepicker({
+                singleDatePicker: true,
+                showDropdowns: true
+            },
+            function(start, end, label) {
+                var years = moment().diff(start, 'years');
+                alert("You are " + years + " years old.");
+            });
+
+        // reportrange
+        function cb(start, end) {
+            $(".reportrange span").html(start.format('MMMM D, YYYY') + ' - ' + end.format('MMMM D, YYYY'));
+        }
+        cb(moment().subtract(29, 'days'), moment());
+
+        $(".reportrange").daterangepicker({
+            "buttonClasses": "button button-rounded button-mini nomargin",
+            "applyClass": "button-color",
+            "cancelClass": "button-light",
+            ranges: {
+                'Today': [moment(), moment()],
+                'Yesterday': [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
+                'Last 7 Days': [moment().subtract(6, 'days'), moment()],
+                'Last 30 Days': [moment().subtract(29, 'days'), moment()],
+                'This Month': [moment().startOf('month'), moment().endOf('month')],
+                'Last Month': [moment().subtract(1, 'month').startOf('month'), moment().subtract(1, 'month').endOf('month')]
+            }
+        }, cb);
+
+        // .daterange4
+        $(".daterange4").daterangepicker({
+            autoUpdateInput: false,
+            locale: {
+                cancelLabel: 'Clear'
+            },
+            "buttonClasses": "button button-rounded button-mini nomargin",
+            "applyClass": "button-color",
+            "cancelClass": "button-light"
+        });
+
+        $(".daterange4").on('apply.daterangepicker', function(ev, picker) {
+            $(this).val(picker.startDate.format('MM/DD/YYYY') + ' - ' + picker.endDate.format('MM/DD/YYYY'));
+        });
+
+        $(".daterange4").on('cancel.daterangepicker', function(ev, picker) {
+            $(this).val('');
+        });
+
+    });
+
+</script>
+
+<script  type="text/javascript">
+    $(document).on('ready', function() {
+        $("#input-1").fileinput({
+            showUpload: false,
+        });
+
+        $("#input-5").fileinput({showCaption: false});
+
+        $("#input-6").fileinput({
+            showUpload: false,
+            maxFileCount: 10,
+            mainClass: "input-group-lg",
+            showCaption: true
+        });
+
+        $("#input-8").fileinput({
+            mainClass: "input-group-md",
+            showUpload: true,
+            previewFileType: "image",
+            browseClass: "btn btn-success",
+            browseLabel: "Pick Image",
+            browseIcon: "<i class=\"icon-picture\"></i> ",
+            removeClass: "btn btn-danger",
+            removeLabel: "Delete",
+            removeIcon: "<i class=\"icon-trash\"></i> ",
+            uploadClass: "btn btn-info",
+            uploadLabel: "Upload",
+            uploadIcon: "<i class=\"icon-upload\"></i> "
+        });
+
+        $("#input-9").fileinput({
+            previewFileType: "text",
+            allowedFileExtensions: ["txt", "md", "ini", "text"],
+            previewClass: "bg-warning",
+            browseClass: "btn btn-primary",
+            removeClass: "btn btn-default",
+            uploadClass: "btn btn-default",
+        });
+
+        $("#input-10").fileinput({
+            showUpload: false,
+            layoutTemplates: {
+                main1: "{preview}\n" +
+                "<div class=\'input-group {class}\'>\n" +
+                "   <div class=\'input-group-btn\'>\n" +
+                "       {browse}\n" +
+                "       {upload}\n" +
+                "       {remove}\n" +
+                "   </div>\n" +
+                "   {caption}\n" +
+                "</div>"
+            }
+        });
+
+        $("#input-11").fileinput({
+            maxFileCount: 10,
+            allowedFileTypes: ["image", "video"]
+        });
+
+        $("#input-12").fileinput({
+            showPreview: false,
+            allowedFileExtensions: ["zip", "rar", "gz", "tgz"],
+            elErrorContainer: "#errorBlock"
+        });
+    });
+
+
+</script>
 
 </body>
 </html>

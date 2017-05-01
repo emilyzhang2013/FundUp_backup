@@ -18,8 +18,12 @@ function db_connect() {
         warningMessage("Connection failed, catched an PDOException." . $e->getMessage());
     }
     if (!$conn) {
+        warningMessage("Failed to connect database, no connection has been established.");
         return false;
     }
+    $conn->setAttribute(PDO::ATTR_EMULATE_PREPARES, true);
+    $conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     return $conn;
 }
 
