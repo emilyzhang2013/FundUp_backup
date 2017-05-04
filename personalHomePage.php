@@ -23,6 +23,7 @@ $youLikeANewProject -> excute([':username' => $_SESSION['username']],[':pid' => 
 $youLikedProject = $pdo -> prepare(
     "SELECT distinct pid, pname, powner, pdescription, fundSoFar, tags, pstatus, endFundTime
                FROM UserLikes join Project using (pid)
+               WHERE (username = :username and
                       pid not in (select F.pid from Fund F where F.username = :username))");
 $youLikedProject -> execute([':username' => $_SESSION['username']]) or die("Cannot get user's funded projects");
 
