@@ -16,12 +16,32 @@ $youFundedProject = $pdo -> prepare(
                    WHERE F.username = :username");
 $youFundedProject -> execute([':username' => $_SESSION['username']]) or die("Cannot get user's funded projects");
 
+$youLikeANewProject = $pdo -> prepare(
+	"INSERT INTO UserLikes(username,pid) values (:username,:pid)");
+$youLikeANewProject -> excute([':username' => $_SESSION['username']],[':pid' => $_GET['pid']]); //TODO: use $_GET
+
 $youLikedProject = $pdo -> prepare(
     "SELECT distinct pid, pname, powner, pdescription, fundSoFar, tags, pstatus, endFundTime
                FROM UserLikes join Project using (pid)
-               WHERE (username = :username and 
+               WHERE (username = :username and
                       pid not in (select F.pid from Fund F where F.username = :username))");
 $youLikedProject -> execute([':username' => $_SESSION['username']]) or die("Cannot get user's funded projects");
+
+$youFollowedPerson = $pdo -> prepare(
+	"SELECT followee
+		FROM UserFollow
+		WHERE username = :username");
+$youFollowedPerson -> execute([':username' => $_SESSION['username']]) or die("Cannot get user's followee"); 
+
+$personFollowedYou = $pdo -> prepare(
+	"SELECT username
+		FROM UserFollow
+		WHERE followee = :followee");
+$personFollowedYou -> execute([':followee' => $_SESSION['followee']]) or die("Cannot get user's who follows you"); 
+
+$youFollowANewPerson = $pdo -> prepare(
+	"INSERT INTO UserFollow(username,followee) values (:username, :followee)");
+$youFollowANewPerson -> excute([':username' => $_SESSION['username']],[':followee' => $_GET['followee']]); //TODO: use $_GET
 
 $followeeCreatedProject = $pdo -> prepare(
     "SELECT pid, pname, powner, pdescription, fundSoFar, tags, pstatus, endFundTime
@@ -35,13 +55,38 @@ $followeeFundedProject = $pdo -> prepare(
                WHERE F.username = :username and D.username = F.followee");
 $followeeFundedProject -> execute([":username" => $_SESSION['username']]) or die("Cannot get user's followee's funded projects");
 
-
 $followeeLikedProject = $pdo -> prepare(
     "SELECT distinct pid, pname, powner, pdescription, fundSoFar, tags, pstatus, endFundTime
                FROM UserLikes L join Project P using (pid), UserFollow U
                WHERE (U.username = :username and L.username = U.followee and 
                      P.pid not in (select F.pid from Fund F where F.username = U.followee))");
 $followeeLikedProject -> execute([':username' => $_SESSION['username']]) or die("Cannot get user's funded projects");
+
+$youCommentedProject = $pdo -> prepare(
+	"SELECT distinct pid, aComment
+		FROM Discussion
+		WHERE username = :username");
+$youCommentedProject -> execute([":username" => $_SESSION['username']]) or die("Cannot get your comments");
+
+$followeeCommentedProject = $pdo -> prepare(
+	"SELECT distinct pid, username, aComment
+		FROM Discussion D join UserFollow U using (username)
+		WHERE (U.username = :username)
+		ORDER BY commentPostedTime DESC
+		LIMIT 5");
+$followeeCommentedProject -> execute([":username" => $_SESSION['username']]);
+
+$theMoneyYouCollected = $pdo -> prepare(
+	"SELECT fundSoFar
+		FROM Project
+		WHERE username = :username");
+$theMoneyYouCollected -> execute([':username' => $_SESSION['username']])or die("Cannot get the funded money");
+
+$tagOnOtherProject = $pdo -> prepare(
+	"SELECT pid, pname, powner, pdescription, fundSoFar, tags, pstatus, endFundTime
+		FROM Project
+		WHERE tags LIKE %:tags%");
+$tagOnOtherProject -> execute([':tags' => $_GET['tags']]) //USE $_GET
 
 function projectPost($pid, $pname, $powner, $tags, $pdescription, $endFundTime, $fundSoFar, $pstatus, $marker = 'no marker') {
     $endFundTime = date_format(date_create($endFundTime), 'Y-m-d');
