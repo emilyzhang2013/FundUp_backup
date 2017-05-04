@@ -4,14 +4,47 @@ require_once ('include/helpfulFunctions.php');
 require_once ('include/dbconfig.php');
 require_once ('include/header.html');
 $pdo = db_connect();
-$ownsProjectStmt = $pdo -> prepare(
-    "SELECT pid, pname, pdescription, fundSoFar, tags, pstatus, endFundTime FROM Project WHERE pOwner = :username");
-$ownsProjectStmt -> execute([':username' => $_SESSION['username']]) or die("Cannot get user's own projects");
-//$followeeProjectStmt = $pdo -> prepare()
-?>
+$youCreatedProject = $pdo -> prepare(
+    "SELECT distinct pid, pname, powner, pdescription, fundSoFar, tags, pstatus, endFundTime
+               FROM Project P
+               WHERE pOwner = :username");
+$youCreatedProject -> execute([':username' => $_SESSION['username']]) or die("Cannot get user's own projects");
 
-<?php
-function projectPost($pid, $pname, $tags, $pdescription, $endFundTime, $fundSoFar, $pstatus) {
+$youFundedProject = $pdo -> prepare(
+        "SELECT distinct pid, pname, powner, pdescription, fundSoFar, tags, pstatus, endFundTime
+                   FROM Project P join Fund F using (pid)
+                   WHERE F.username = :username");
+$youFundedProject -> execute([':username' => $_SESSION['username']]) or die("Cannot get user's funded projects");
+
+$youLikedProject = $pdo -> prepare(
+    "SELECT distinct pid, pname, powner, pdescription, fundSoFar, tags, pstatus, endFundTime
+               FROM UserLikes join Project using (pid)
+               WHERE (username = :username and 
+                      pid not in (select F.pid from Fund F where F.username = :username))");
+$youLikedProject -> execute([':username' => $_SESSION['username']]) or die("Cannot get user's funded projects");
+
+$followeeCreatedProject = $pdo -> prepare(
+    "SELECT pid, pname, powner, pdescription, fundSoFar, tags, pstatus, endFundTime
+               FROM Project P join UserFollow F on (followee = P.pOwner)
+               WHERE F.username = :username");
+$followeeCreatedProject -> execute([":username" => $_SESSION['username']]) or die("Cannot get user's followee's own projects");
+
+$followeeFundedProject = $pdo -> prepare(
+    "SELECT pid, pname, powner, pdescription, fundSoFar, tags, pstatus, endFundTime
+               FROM Project P join Fund D using (pid),  UserFollow F
+               WHERE F.username = :username and D.username = F.followee");
+$followeeFundedProject -> execute([":username" => $_SESSION['username']]) or die("Cannot get user's followee's funded projects");
+
+
+$followeeLikedProject = $pdo -> prepare(
+    "SELECT distinct pid, pname, powner, pdescription, fundSoFar, tags, pstatus, endFundTime
+               FROM UserLikes L join Project P using (pid), UserFollow U
+               WHERE (U.username = :username and L.username = U.followee and 
+                     P.pid not in (select F.pid from Fund F where F.username = U.followee))");
+$followeeLikedProject -> execute([':username' => $_SESSION['username']]) or die("Cannot get user's funded projects");
+
+function projectPost($pid, $pname, $powner, $tags, $pdescription, $endFundTime, $fundSoFar, $pstatus, $marker = 'no marker') {
+    $endFundTime = date_format(date_create($endFundTime), 'Y-m-d');
     echo "
         <div class='entry clearfix'>
         <div class='entry-image'>
@@ -19,9 +52,13 @@ function projectPost($pid, $pname, $tags, $pdescription, $endFundTime, $fundSoFa
         </div>
         <div class='entry-c'>
             <div class='entry-title'>
-                <h2><a href='blog-single.html'>$pname</a></h2>
+                <h2><a href='project.php?pid=$pid'>$pname</a></h2>
             </div>
-            <ul class='entry-meta clearfix'>
+            <ul class='entry-meta clearfix'>";
+    if ($marker != 'no marker') {
+        echo "<li>$marker</li>";
+    }
+    echo "
                 <li><i class='icon-calendar3'></i>$endFundTime</li>
                 <li><i class='icon-folder-open'></i>$tags</li>
                 <li>$fundSoFar</li>
@@ -35,7 +72,6 @@ function projectPost($pid, $pname, $tags, $pdescription, $endFundTime, $fundSoFa
     </div>
     ";
 }
-?>
 ?>
     <!-- Page Title
     ============================================= -->
@@ -61,196 +97,35 @@ function projectPost($pid, $pname, $tags, $pdescription, $endFundTime, $fundSoFa
 						<!-- Posts
 						============================================= -->
 						<div id="posts" class="small-thumbs">
-
                             <?php
-                            $result = $ownsProjectStmt -> fetchAll();
-                                foreach ($result as $row) {
-                                projectPost($row['pid'], $row['pname'], $row['tags'], $row['pdescription'], $row['endFundTime'], $row['fundSoFar'], $row['pstatus']);
+                            echo "<h2>Your own activities</h2>";
+                            $result = $youCreatedProject -> fetchAll();
+                            foreach ($result as $row) {
+                                projectPost($row['pid'], $row['pname'], $row['powner'], $row['tags'], $row['pdescription'], $row['endFundTime'], $row['fundSoFar'], $row['pstatus'], "You created");
+                            }
+                            $result = $youFundedProject -> fetchAll();
+                            foreach ($result as $row) {
+                                projectPost($row['pid'], $row['pname'], $row['powner'], $row['tags'], $row['pdescription'], $row['endFundTime'], $row['fundSoFar'], $row['pstatus'], "You funded");
+                            }
+                            $result = $youLikedProject -> fetchAll();
+                            foreach ($result as $row) {
+                                projectPost($row['pid'], $row['pname'], $row['powner'], $row['tags'], $row['pdescription'], $row['endFundTime'], $row['fundSoFar'], $row['pstatus'], "You liked");
+                            }
+
+                            echo "<h2>Your followees' activities</h2>";
+                            $result = $followeeCreatedProject -> fetchAll();
+                            foreach ($result as $row) {
+                                projectPost($row['pid'], $row['pname'], $row['powner'], $row['tags'], $row['pdescription'], $row['endFundTime'], $row['fundSoFar'], $row['pstatus'], "Your followee created");
+                            }
+                            $result = $followeeFundedProject -> fetchAll();
+                            foreach ($result as $row) {
+                                projectPost($row['pid'], $row['pname'], $row['powner'], $row['tags'], $row['pdescription'], $row['endFundTime'], $row['fundSoFar'], $row['pstatus'], "Your followee funded");
+                            }
+                            $result = $followeeLikedProject -> fetchAll();
+                            foreach ($result as $row) {
+                                projectPost($row['pid'], $row['pname'], $row['powner'], $row['tags'], $row['pdescription'], $row['endFundTime'], $row['fundSoFar'], $row['pstatus'], "Your followee liked");
                             }
                             ?>
-
-							<div class="entry clearfix">
-								<div class="entry-image">
-									<a href="images/blog/full/17.jpg" data-lightbox="image"><img class="image_fade" src="images/blog/small/17.jpg" alt="Standard Post with Image"></a>
-								</div>
-								<div class="entry-c">
-									<div class="entry-title">
-										<h2><a href="blog-single.html">This is a Standard post with a Preview Image</a></h2>
-									</div>
-									<ul class="entry-meta clearfix">
-										<li><i class="icon-calendar3"></i> 10th Feb 2014</li>
-										<li><a href="#"><i class="icon-user"></i> admin</a></li>
-										<li><i class="icon-folder-open"></i> <a href="#">General</a>, <a href="#">Media</a></li>
-										<li><a href="blog-single.html#comments"><i class="icon-comments"></i> 13</a></li>
-										<li><a href="#"><i class="icon-camera-retro"></i></a></li>
-									</ul>
-									<div class="entry-content">
-										<p>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Cupiditate, asperiores quod est tenetur in. Eligendi, deserunt, blanditiis est quisquam doloribus voluptate id aperiam ea ipsum magni aut perspiciatis rem voluptatibus officia eos rerum deleniti quae nihil facilis repellat atque vitae voluptatem libero at eveniet veritatis ab facere.</p>
-										<a href="blog-single.html"class="more-link">Read More</a>
-									</div>
-								</div>
-							</div>
-
-						   <div class="entry clearfix">
-								<div class="entry-image">
-									<iframe src="http://player.vimeo.com/video/87701971" width="500" height="281" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen></iframe>
-								</div>
-								<div class="entry-c">
-									<div class="entry-title">
-										<h2><a href="blog-single-full.html">This is a Standard post with an Embedded Video</a></h2>
-									</div>
-									<ul class="entry-meta clearfix">
-										<li><i class="icon-calendar3"></i> 16th Feb 2014</li>
-										<li><a href="#"><i class="icon-user"></i> admin</a></li>
-										<li><i class="icon-folder-open"></i> <a href="#">Videos</a>, <a href="#">News</a></li>
-										<li><a href="blog-single-full.html#comments"><i class="icon-comments"></i> 19</a></li>
-										<li><a href="#"><i class="icon-film"></i></a></li>
-									</ul>
-									<div class="entry-content">
-										<p>Asperiores, tenetur, blanditiis, quaerat odit ex exercitationem pariatur quibusdam veritatis quisquam laboriosam esse beatae hic perferendis velit deserunt soluta iste repellendus officia in neque veniam debitis placeat quo unde reprehenderit eum facilis vitae.</p>
-										<a href="blog-single-full.html"class="more-link">Read More</a>
-									</div>
-								</div>
-							</div>
-
-							<div class="entry clearfix">
-								<div class="entry-image">
-									<div class="fslider" data-arrows="false" data-lightbox="gallery">
-										<div class="flexslider">
-											<div class="slider-wrap">
-												<div class="slide"><a href="images/blog/full/10.jpg" data-lightbox="gallery-item"><img class="image_fade" src="projectimage.php?username=<?php echo $_SESSION['username']; ?> alt=" Standard Post with Gallery"></a></div>
-												<div class="slide"><a href="images/blog/full/20.jpg" data-lightbox="gallery-item"><img class="image_fade" src="images/blog/small/20.jpg" alt="Standard Post with Gallery"></a></div>
-												<div class="slide"><a href="images/blog/full/21.jpg" data-lightbox="gallery-item"><img class="image_fade" src="images/blog/small/21.jpg" alt="Standard Post with Gallery"></a></div>
-											</div>
-										</div>
-									</div>
-								</div>
-								<div class="entry-c">
-									<div class="entry-title">
-										<h2><a href="blog-single-small.html">This is a Standard post with a Slider Gallery</a></h2>
-									</div>
-									<ul class="entry-meta clearfix">
-										<li><i class="icon-calendar3"></i> 24th Feb 2014</li>
-										<li><a href="#"><i class="icon-user"></i> admin</a></li>
-										<li><i class="icon-folder-open"></i> <a href="#">Gallery</a>, <a href="#">Media</a></li>
-										<li><a href="blog-single-small.html#comments"><i class="icon-comments"></i> 21</a></li>
-										<li><a href="#"><i class="icon-picture"></i></a></li>
-									</ul>
-									<div class="entry-content">
-										<p>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Ratione, voluptatem, dolorem animi nisi autem blanditiis enim culpa reiciendis et explicabo tenetur voluptate rerum molestiae eaque possimus exercitationem eligendi fuga. Maiores, sunt eveniet doloremque porro hic exercitationem distinctio sequi adipisci.</p>
-										<a href="blog-single-small.html"class="more-link">Read More</a>
-									</div>
-								</div>
-							</div>
-
-							<div class="entry clearfix">
-								<div class="entry-c">
-									<div class="entry-image">
-										<blockquote>
-											<p>"When you are courting a nice girl an hour seems like a second. When you sit on a red-hot cinder a second seems like an hour. That's relativity."</p>
-											<footer>Albert Einstein</footer>
-										</blockquote>
-									</div>
-									<ul class="entry-meta clearfix">
-										<li><i class="icon-calendar3"></i> 3rd Mar 2014</li>
-										<li><a href="#"><i class="icon-user"></i> admin</a></li>
-										<li><i class="icon-folder-open"></i> <a href="#">Quotes</a>, <a href="#">People</a></li>
-										<li><a href="blog-single.html#comments"><i class="icon-comments"></i> 23</a></li>
-										<li><a href="#"><i class="icon-quote-left"></i></a></li>
-									</ul>
-								</div>
-							</div>
-
-							<div class="entry clearfix">
-								<div class="entry-image clearfix">
-									<div class="portfolio-single-image masonry-thumbs col-4" data-big="3" data-lightbox="gallery">
-										<a href="images/blog/full/2.jpg" data-lightbox="gallery-item"><img class="image_fade" src="images/blog/small/2.jpg" alt=""></a>
-										<a href="images/blog/full/3.jpg" data-lightbox="gallery-item"><img class="image_fade" src="images/blog/small/3.jpg" alt=""></a>
-										<a href="images/blog/full/6-1.jpg" data-lightbox="gallery-item"><img class="image_fade" src="images/blog/small/6-1.jpg" alt=""></a>
-										<a href="images/blog/full/6-2.jpg" data-lightbox="gallery-item"><img class="image_fade" src="images/blog/small/6-2.jpg" alt=""></a>
-										<a href="images/blog/full/12.jpg" data-lightbox="gallery-item"><img class="image_fade" src="images/blog/small/12.jpg" alt=""></a>
-										<a href="images/blog/full/12-1.jpg" data-lightbox="gallery-item"><img class="image_fade" src="images/blog/small/12-1.jpg" alt=""></a>
-										<a href="images/blog/full/13.jpg" data-lightbox="gallery-item"><img class="image_fade" src="images/blog/small/13.jpg" alt=""></a>
-										<a href="images/blog/full/18.jpg" data-lightbox="gallery-item"><img class="image_fade" src="images/blog/small/18.jpg" alt=""></a>
-										<a href="images/blog/full/19.jpg" data-lightbox="gallery-item"><img class="image_fade" src="images/blog/small/19.jpg" alt=""></a>
-									</div>
-								</div>
-								<div class="entry-c">
-									<div class="entry-title">
-										<h2><a href="blog-single-thumbs.html">This is a Standard post with Masonry Thumbs Gallery</a></h2>
-									</div>
-									<ul class="entry-meta clearfix">
-										<li><i class="icon-calendar3"></i> 3rd Mar 2014</li>
-										<li><a href="#"><i class="icon-user"></i> admin</a></li>
-										<li><i class="icon-folder-open"></i> <a href="#">Gallery</a>, <a href="#">Media</a></li>
-										<li><a href="blog-single-thumbs.html#comments"><i class="icon-comments"></i> 21</a></li>
-										<li><a href="#"><i class="icon-picture"></i></a></li>
-									</ul>
-									<div class="entry-content">
-										<p>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Ratione, voluptatem, dolorem animi nisi autem blanditiis enim culpa reiciendis et explicabo tenetur voluptate rerum molestiae eaque possimus exercitationem eligendi fuga.</p>
-										<a href="blog-single-thumbs.html"class="more-link">Read More</a>
-									</div>
-								</div>
-							</div>
-
-							<div class="entry clearfix">
-								<div class="entry-c">
-									<div class="entry-image">
-										<a href="http://themeforest.net" class="entry-link" target="_blank">
-											Themeforest.net
-											<span>- http://themeforest.net</span>
-										</a>
-									</div>
-									<ul class="entry-meta clearfix">
-										<li><i class="icon-calendar3"></i> 17th Mar 2014</li>
-										<li><a href="#"><i class="icon-user"></i> admin</a></li>
-										<li><i class="icon-folder-open"></i> <a href="#">Links</a>, <a href="#">Suggestions</a></li>
-										<li><a href="blog-single.html#comments"><i class="icon-comments"></i> 26</a></li>
-										<li><a href="#"><i class="icon-link"></i></a></li>
-									</ul>
-								</div>
-							</div>
-
-							<div class="entry clearfix">
-								<div class="entry-c">
-									<div class="entry-image">
-										<div class="panel panel-default">
-											<div class="panel-body">
-												Lorem ipsum dolor sit amet, consectetur adipisicing elit. Quia, fuga optio voluptatibus saepe tenetur aliquam debitis eos accusantium! Vitae, hic, atque aliquid repellendus accusantium laudantium minus eaque quibusdam ratione sapiente.
-											</div>
-										</div>
-									</div>
-									<ul class="entry-meta clearfix">
-										<li><i class="icon-calendar3"></i> 21st Mar 2014</li>
-										<li><a href="#"><i class="icon-user"></i> admin</a></li>
-										<li><i class="icon-folder-open"></i> <a href="#">Status</a>, <a href="#">News</a></li>
-										<li><a href="blog-single.html#comments"><i class="icon-comments"></i> 11</a></li>
-										<li><a href="#"><i class="icon-align-justify2"></i></a></li>
-									</ul>
-								</div>
-							</div>
-
-							<div class="entry clearfix">
-								<div class="entry-image clearfix">
-									<iframe width="100%" scrolling="no" frameborder="no" src="https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/115823769&amp;auto_play=false&amp;hide_related=true&amp;visual=true"></iframe>
-								</div>
-								<div class="entry-c">
-									<div class="entry-title">
-										<h2><a href="blog-single.html">This is an Embedded Audio Post</a></h2>
-									</div>
-									<ul class="entry-meta clearfix">
-										<li><i class="icon-calendar3"></i> 28th Apr 2014</li>
-										<li><a href="#"><i class="icon-user"></i> admin</a></li>
-										<li><i class="icon-folder-open"></i> <a href="#">Audio</a>, <a href="#">General</a></li>
-										<li><a href="blog-single.html#comments"><i class="icon-comments"></i> 16</a></li>
-										<li><a href="#"><i class="icon-music2"></i></a></li>
-									</ul>
-									<div class="entry-content">
-										<p>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Ratione, voluptatem, dolorem animi nisi autem blanditiis enim culpa reiciendis et explicabo tenetur voluptate rerum molestiae eaque possimus exercitationem eligendi fuga.</p>
-										<a href="blog-single.html"class="more-link">Read More</a>
-									</div>
-								</div>
-							</div>
 
 						</div><!-- #posts end -->
 
@@ -374,21 +249,6 @@ function projectPost($pid, $pname, $tags, $pdescription, $endFundTime, $fundSoFa
 														</ul>
 													</div>
 												</div>
-
-												<div class="spost clearfix">
-													<div class="entry-image">
-														<a href="#" class="nobg"><img class="img-circle" src="images/magazine/small/3.jpg" alt=""></a>
-													</div>
-													<div class="entry-c">
-														<div class="entry-title">
-															<h4><a href="#">Debitis nihil placeat, illum est nisi</a></h4>
-														</div>
-														<ul class="entry-meta">
-															<li>10th July 2014</li>
-														</ul>
-													</div>
-												</div>
-
 											</div>
 										</div>
 										<div class="tab-content clearfix" id="tabs-3">
@@ -430,49 +290,6 @@ function projectPost($pid, $pname, $tags, $pdescription, $endFundTime, $fundSoFa
 
 							</div>
 
-							<div class="widget clearfix">
-
-								<h4>Portfolio Carousel</h4>
-								<div id="oc-portfolio-sidebar" class="owl-carousel carousel-widget" data-items="1" data-margin="10" data-loop="true" data-nav="false" data-autoplay="5000">
-
-									<div class="oc-item">
-										<div class="iportfolio">
-											<div class="portfolio-image">
-												<a href="#">
-													<img src="images/portfolio/4/3.jpg" alt="Mac Sunglasses">
-												</a>
-												<div class="portfolio-overlay">
-													<a href="http://vimeo.com/89396394" class="center-icon" data-lightbox="iframe"><i class="icon-line-play"></i></a>
-												</div>
-											</div>
-											<div class="portfolio-desc center nobottompadding">
-												<h3><a href="portfolio-single-video.html">Mac Sunglasses</a></h3>
-												<span><a href="#">Graphics</a>, <a href="#">UI Elements</a></span>
-											</div>
-										</div>
-									</div>
-
-									<div class="oc-item">
-										<div class="iportfolio">
-											<div class="portfolio-image">
-												<a href="portfolio-single.html">
-													<img src="images/portfolio/4/1.jpg" alt="Open Imagination">
-												</a>
-												<div class="portfolio-overlay">
-													<a href="images/blog/full/1.jpg" class="center-icon" data-lightbox="image"><i class="icon-line-plus"></i></a>
-												</div>
-											</div>
-											<div class="portfolio-desc center nobottompadding">
-												<h3><a href="portfolio-single.html">Open Imagination</a></h3>
-												<span><a href="#">Media</a>, <a href="#">Icons</a></span>
-											</div>
-										</div>
-									</div>
-
-								</div>
-
-
-							</div>
 
 							<div class="widget clearfix">
 

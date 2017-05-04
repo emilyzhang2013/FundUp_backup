@@ -11,6 +11,11 @@ $pdo = db_connect();
 $stmt = $pdo -> prepare("SELECT cover FROM Project WHERE pid = :pid");
 $stmt -> execute([':pid' => $_GET['pid']]) or die("Cannot get image(s) for the project");
 $result = $stmt -> fetch();
+
 header("Content-type: image/JPEG",true);
 header("Content-type: image/PNG",true);
-echo $result['cover'];
+if (!isset($result['cover'])) {
+    echo file_get_contents("images/default_image.jpeg");
+} else {
+    echo $result['cover'];
+}

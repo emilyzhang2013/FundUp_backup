@@ -37,7 +37,7 @@ CREATE TABLE Project (
     pOwner varchar(30) not null,
     tags varchar(100),
     projectCreatedTime TIMESTAMP default current_timestamp not null,
-    endFundTime datetime not null,
+    endFundTime datetime not null default date_add(projectCreatedTime, INTERVAL 30 DAY),
     completionDate datetime not null,
     minFund DECIMAL(10 , 2 ) NOT NULL CHECK (minFund > 0),
     maxFund DECIMAL(10 , 2 ) NOT NULL CHECK (maxFund > 0),
