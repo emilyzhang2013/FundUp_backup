@@ -71,7 +71,7 @@ $youCommentedProject -> execute([":username" => $_SESSION['username']]) or die("
 $followeeCommentedProject = $pdo -> prepare(
 	"SELECT distinct pid, U.username, aComment,commentPostedTime
 FROM Discussion D join UserFollow U
-WHERE (U.username = 'a') and D.username = U.followee
+WHERE (U.username = :username) and D.username = U.followee
 ORDER BY commentPostedTime DESC
 LIMIT 5");
 $followeeCommentedProject -> execute([":username" => $_SESSION['username']]);
@@ -117,7 +117,7 @@ function projectPost($pid, $pname, $powner, $tags, $pdescription, $endFundTime, 
     <section id="page-title">
 
         <div class="container clearfix">
-            <h1>Your personal homepage</h1>
+<!--            <h1>Your personal homepage</h1>-->
             <!--				<span>Showcase of Our Awesome Works in 2 Columns</span>-->
         </div>
 

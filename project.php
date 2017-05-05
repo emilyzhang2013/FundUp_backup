@@ -12,7 +12,7 @@ $stmt = $pdo -> prepare(
                    WHERE pid = :pid"
 );
 $stmt -> execute([':pid' => $pid]);
-$result = $stmt -> fetch();
+$project = $stmt -> fetch();
 
 $stmt = $pdo -> prepare (
         "select *
@@ -20,20 +20,40 @@ $stmt = $pdo -> prepare (
                    where pid = :pid
                    order by updateTime desc"
 );
-$projectUpdates = $projectUpdates -> fetchAll();
+$stmt -> execute([':pid' => $pid]);
+$projectUpdates = $stmt -> fetchAll();
+
+// Made Changes
+$stmt = $pdo -> prepare(
+        "Select tags
+                   From Project
+                   WHERE pid = :pid"
+);
+$stmt -> execute([':pid' => $pid]);
+$result = $stmt -> fetch();
+
+function displaytags($record){
+    $tags = $record['tags'];
+    $tagsArray = explode(",", $tags);
+    echo "
+    <!-- Tag Cloud -->
+    
+    <div class='tagcloud clearfix bottommargin'>";
+        foreach($tagsArray as $row) {
+            echo "<a href='projectbucket.php?tag=$row'>$row</a>";//TODO
+        }
+    echo "
+    </div><!-- .tagcloud end -->
+    ";
+}
 ?>
+
 
 		<!-- Page Title
 		============================================= -->
 		<section id="page-title">
 
 			<div class="container clearfix">
-				<h1>Blog Single</h1>
-				<ol class="breadcrumb">
-					<li><a href="#">Home</a></li>
-					<li><a href="#">Blog</a></li>
-					<li class="active">Blog Single</li>
-				</ol>
 			</div>
 
 		</section><!-- #page-title end -->
@@ -59,13 +79,13 @@ $projectUpdates = $projectUpdates -> fetchAll();
 								<!-- Entry Title
 								============================================= -->
 								<div class="entry-title">
-									<h2><?php echo $result['pname']?></h2>
+									<h2><?php echo $project['pname']?></h2>
 								</div><!-- .entry-title end -->
 
 								<!-- Entry Meta
 								============================================= -->
 								<ul class="entry-meta clearfix">
-									<li><i class="icon-calendar3"></i>End in <?php echo $result['endFundTime']?></li>
+									<li><i class="icon-calendar3"></i>End in <?php echo $project['endFundTime']?></li>
 									<li><a href="#"><i class="icon-user"></i> admin</a></li>
 									<li><i class="icon-folder-open"></i> <a href="#">General</a>, <a href="#">Media</a></li>
 									<li><a href="#"><i class="icon-comments"></i> 43 Comments</a></li>
@@ -82,11 +102,19 @@ $projectUpdates = $projectUpdates -> fetchAll();
 								============================================= -->
 								<div class="entry-content notopmargin">
                                     <h4>Description</h4>
-                                    <p><?php echo $result['pdescription'];?></p>
-                                    <h4>Update</h4>
+                                    <p><?php echo $project['pdescription'];?></p>
                                     <?php
-                                    foreach ($projectUpdates as $row) {
-                                        echo  "<div class='divider divider-border'><i class="icon-refresh"></i></div>";
+                                    if (isset($projectUpdates)) {
+                                        echo "<h4>Update</h4>";
+                                        foreach ($projectUpdates as $row) {
+                                            $updateTime = $row['updateTime'];
+                                            $updateDescription = $row['updateDescription'];
+                                            $updateTimeDisplay = date_format(date_create($updateTime), 'Y-m-d h:m:s');
+                                            echo "<i class='icon-calendar3'></i>Update at $updateTimeDisplay";
+                                            echo "<img src='projectimage.php?pid=$pid&updateTime=$updateTime' alt='Blog Single''>";
+                                            echo "<p>$updateDescription</p>";
+                                            echo "<div class='divider divider-border'><i class='icon-refresh'></i></div>";
+                                        }
                                     }
                                     ?>
 									<!-- Post Single - Content End -->
@@ -404,21 +432,24 @@ $projectUpdates = $projectUpdates -> fetchAll();
                                 <h4>Project bio</h4>
                                 <div class="portfolio-desc">
                                     <ul class="iconlist">
-                                        <li><i class="icon-ok"></i> <strong>Created:</strong> <?php echo $result['createT']?></li>
-                                        <li><i class="icon-remove"></i> <strong>End Fund:</strong> <?php echo $result['endFT']?></li>
-                                        <li><i class="icon-remove"></i> <strong>Complete:</strong> <?php echo $result['endPT']?></li>
-                                        <li><i class="icon-ok"></i> <strong>By:</strong> <?php $pOname = $result['pOwner']; echo "<a href='user.php?username=$pOname'>$pOname</a>" ?></li>
+                                        <li><i class="icon-ok"></i> <strong>Created:</strong> <?php echo $project['createT']?></li>
+                                        <li><i class="icon-remove"></i> <strong>End Fund:</strong> <?php echo $project['endFT']?></li>
+                                        <li><i class="icon-remove"></i> <strong>Complete:</strong> <?php echo $project['endPT']?></li>
+                                        <li><i class="icon-ok"></i> <strong>Collected:</strong> <?php echo '$'.$project['fundSoFar']?></li>
+                                        <li><i class="icon-ok"></i> <strong>By:</strong> <?php $pOname = $project['pOwner']; echo "<a href='user.php?username=$pOname'>$pOname</a>" ?></li>
                                     </ul>
-                                    <!-- Tag Cloud
-============================================= -->
-                                    <div class="tagcloud clearfix bottommargin">
-                                        <a href="#">general</a>
-                                        <a href="#">information</a>
-                                        <a href="#">media</a>
-                                        <a href="#">press</a>
-                                        <a href="#">gallery</a>
-                                        <a href="#">illustration</a>
-                                    </div><!-- .tagcloud end -->
+
+                                    <?php
+                                    displaytags($result);
+                                    ?>
+
+
+                                    <?php
+                                    if ($_SESSION['username'] == $project['pOwner']) {
+                                        echo "<a href='updateProject.php?pid=$pid' class='button button-3d button-rounded button-teal'>Update your project</a>";
+                                    }
+                                    ?>
+
                                 </div>
                             </div>
 
